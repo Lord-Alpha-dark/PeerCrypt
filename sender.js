@@ -14,7 +14,7 @@ function sendFile(filePath) {
 
 
         socket.on('close', () => {
-            console.log(`receiver ${connectionCount} disconnected`);
+            console.log(`\nreceiver ${connectionCount} disconnected`);
             connections.delete(socket);
         });
 
@@ -115,6 +115,7 @@ function sendFile(filePath) {
                         }
 
                         readStream.on('end', () => {
+                            process.stdout.write('\n');
                             console.log('file sent successfully');
                             socket.end();
                             cleanupStdin();

@@ -29,7 +29,17 @@ function receiveFile(host, port, destination) {
   let key, iv, decipher, writeStream;
    let totalSize = 0n;
   let receivedBytes = 0;
-  
+  //to hold the stdin listener function
+  let keyListener;
+
+  const cleanupStdin=()=>{
+    if(keyListener){
+      process.stdin.removeListener('data', keyListener);
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+    }
+  };
+
   client.on('data', (chunk) => {
 
     if(state=='WAITING_ENCRYPTED_DATA'){
@@ -110,6 +120,30 @@ function receiveFile(host, port, destination) {
 
               state = 'WAITING_ENCRYPTED_DATA';
             console.log('📥 Receiving encrypted file...');
+
+            
+            console.log('\n\n╔════════════════════════════════════════╗');
+            console.log('║   Press "p" to pause, "r" to resume  ║');
+            console.log('║         or Ctrl+C to exit          ║');
+            console.log('╚════════════════════════════════════════╝\n');
+
+            let isPaused=false;
+            keyListener=(key)=>{
+              if (key.toLowerCase() === 'p' && !isPaused) {
+                console.log('\n⏸️  Pausing transfer...');
+                client.pause();
+                isPaused = true;
+              } else if (key.toLowerCase() === 'r' && isPaused) {
+                console.log('\n▶️  Resuming transfer...');
+                client.resume();
+                isPaused = false;
+              }
+            }
+
+             process.stdin.setRawMode(true);
+            process.stdin.resume();
+            process.stdin.setEncoding('utf-8');
+            process.stdin.on('data', keyListener);
           }
         }
         break;
@@ -118,6 +152,7 @@ function receiveFile(host, port, destination) {
   );
 
   client.on('end', () => {
+     cleanupStdin(); // Clean up the stdin listener
     if (decipher) {
       decipher.end();  // Finalize decryption
     }
@@ -125,6 +160,7 @@ function receiveFile(host, port, destination) {
   });
 
   client.on('error', (err) => {
+      cleanupStdin(); // Clean up the stdin listener
     console.error('❌ Error:', err.message);
   });
 }
